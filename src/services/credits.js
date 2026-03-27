@@ -1,4 +1,4 @@
-git add README.mdimport api from "../lib/axios";
+import api from "../lib/axios";
 
 export const creditAPI = {
   // Get user balance
