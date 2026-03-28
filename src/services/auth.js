@@ -8,16 +8,23 @@ export const authAPI = {
   },
 
   // Login user
-  login: async (credentials) => {
-    const response = await api.post("/user/login", credentials);
-    return response.data;
-  },
+ login: async (credentials) => {
+  const response = await api.post("/user/login", credentials);
 
+  // Save JWT token
+  if (response.data.token) {
+    localStorage.setItem("token", response.data.token);
+  }
+
+  return response.data;
+},
   // Logout user
-  logout: async () => {
-    const response = await api.post("/user/logout");
-    return response.data;
-  },
+logout: async () => {
+  localStorage.removeItem("token");
+
+  const response = await api.post("/user/logout");
+  return response.data;
+},
 
   // Get current user profile
   getProfile: async () => {
