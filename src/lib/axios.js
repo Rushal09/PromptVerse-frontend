@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://promptverse-backend-g9ao.onrender.com/api",
+  baseURL: "https://promptverse-backend-q9ao.onrender.com/api",
   withCredentials: true,
 });
 
