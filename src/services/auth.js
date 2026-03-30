@@ -14,24 +14,29 @@ export const authAPI = {
 
   // Login user
   login: async (credentials) => {
-  const response = await api.post("/user/login", credentials);
+  try {
+    const response = await api.post("/user/login", credentials);
 
-  console.log("LOGIN RESPONSE:", response.data);
+    console.log("LOGIN RESPONSE:", response.data);
 
-  const token =
-    response.data?.token ||
-    response.data?.data?.token ||
-    response.data?.accessToken ||
-    response.data?.data?.accessToken;
+    const token =
+      response.data?.token ||
+      response.data?.data?.token ||
+      response.data?.accessToken ||
+      response.data?.data?.accessToken;
 
-  if (token) {
-    localStorage.setItem("token", token);
-    console.log("Token saved");
-  } else {
-    console.error("Token not found in login response");
+    if (token) {
+      localStorage.setItem("token", token);
+      console.log("Token saved:", token);
+    } else {
+      console.error("Token not found in login response");
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error("Login error:", error);
+    throw error;
   }
-
-  return response.data;
 },
 
   // Logout user

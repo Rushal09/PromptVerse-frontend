@@ -3,43 +3,49 @@ import axios from "axios";
 const api = axios.create({
   baseURL: "https://promptverse-backend-q9ao.onrender.com/api",
   withCredentials: true,
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 /*
   Request interceptor
-  Automatically attach JWT token
+  Attach JWT token
 */
-
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    try {
+      const token = localStorage.getItem("token");
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-      console.log("Token attached to request");
-    } else {
-      console.log("No token found");
+      if (token && token !== "null" && token !== "undefined") {
+        config.headers.Authorization = `Bearer ${token}`;
+        console.log("✅ Token attached");
+      } else {
+        console.log("⚠️ No valid token found");
+      }
+
+      return config;
+    } catch (err) {
+      console.error("Token error:", err);
+      return config;
     }
-
-    return config;
   },
   (error) => Promise.reject(error)
 );
 
 /*
   Response interceptor
-  Handle unauthorized errors
+  Handle errors safely
 */
-
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.log("Unauthorized - removing token");
+      console.log("❌ Unauthorized request");
 
-      localStorage.removeItem("token");
-
-      window.location.href = "/login";
+      // 🔴 IMPORTANT: disable auto logout while debugging
+      // localStorage.removeItem("token");
+      // window.location.href = "/login";
     }
 
     return Promise.reject(error);
