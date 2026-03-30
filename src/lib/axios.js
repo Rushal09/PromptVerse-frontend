@@ -8,42 +8,58 @@ const api = axios.create({
   },
 });
 
-/*
-  Request interceptor
-  Attach JWT token
-*/
-api.interceptors.request.use(
-  (config) => {
-    try {
-      const token = localStorage.getItem("token");
+const getStoredToken = () => {
+  try {
+    // 1. Normal token storage
+    let token = localStorage.getItem("token");
+    if (token && token !== "null" && token !== "undefined") {
+      return token;
+    }
+
+    // 2. Zustand persisted auth storage
+    const authStorage = localStorage.getItem("auth-storage");
+    if (authStorage) {
+      const parsed = JSON.parse(authStorage);
+      token =
+        parsed?.state?.token ||
+        parsed?.state?.accessToken ||
+        parsed?.state?.authToken;
 
       if (token && token !== "null" && token !== "undefined") {
-        config.headers.Authorization = `Bearer ${token}`;
-        console.log("✅ Token attached");
-      } else {
-        console.log("⚠️ No valid token found");
+        return token;
       }
-
-      return config;
-    } catch (err) {
-      console.error("Token error:", err);
-      return config;
     }
+
+    return null;
+  } catch (error) {
+    console.error("Error reading token from storage:", error);
+    return null;
+  }
+};
+
+api.interceptors.request.use(
+  (config) => {
+    const token = getStoredToken();
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("✅ Token attached");
+    } else {
+      console.log("❌ No valid token found");
+    }
+
+    return config;
   },
   (error) => Promise.reject(error)
 );
 
-/*
-  Response interceptor
-  Handle errors safely
-*/
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       console.log("❌ Unauthorized request");
 
-      // 🔴 IMPORTANT: disable auto logout while debugging
+      // keep disabled while debugging
       // localStorage.removeItem("token");
       // window.location.href = "/login";
     }

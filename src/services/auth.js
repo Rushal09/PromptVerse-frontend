@@ -27,9 +27,20 @@ export const authAPI = {
 
     if (token) {
       localStorage.setItem("token", token);
-      console.log("Token saved:", token);
+
+      const authStorage = localStorage.getItem("auth-storage");
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        parsed.state = {
+          ...parsed.state,
+          token,
+        };
+        localStorage.setItem("auth-storage", JSON.stringify(parsed));
+      }
+
+      console.log("✅ Token saved:", token);
     } else {
-      console.error("Token not found in login response");
+      console.error("❌ Token not found in login response");
     }
 
     return response.data;
