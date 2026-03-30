@@ -36,16 +36,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      console.log("Unauthorized - clearing token");
+      console.log("Unauthorized - removing token");
 
+      // Remove token ONLY
       localStorage.removeItem("token");
 
-      // redirect to login
-      window.location.href = "/login";
+      // ❌ DO NOT redirect automatically
+      // window.location.href = "/login";
     }
 
     return Promise.reject(error);
   }
 );
-
 export default api;
