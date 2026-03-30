@@ -14,38 +14,25 @@ export const authAPI = {
 
   // Login user
   login: async (credentials) => {
-    try {
-      const response = await api.post("/user/login", credentials);
+  const response = await api.post("/user/login", credentials);
 
-      console.log("LOGIN RESPONSE:", response.data);
+  console.log("LOGIN RESPONSE:", response.data);
 
-      /*
-        Handle different backend response formats:
-        1) { token: "..." }
-        2) { data: { token: "..." } }
-        3) { accessToken: "..." }
-      */
+  const token =
+    response.data?.token ||
+    response.data?.data?.token ||
+    response.data?.accessToken ||
+    response.data?.data?.accessToken;
 
-      const token =
-        response.data?.token ||
-        response.data?.data?.token ||
-        response.data?.accessToken ||
-        response.data?.data?.accessToken;
+  if (token) {
+    localStorage.setItem("token", token);
+    console.log("Token saved");
+  } else {
+    console.error("Token not found in login response");
+  }
 
-      if (token) {
-        localStorage.setItem("token", token);
-        console.log("Token saved successfully");
-      } else {
-        console.error("Token not found in login response");
-      }
-
-      return response.data;
-
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
-    }
-  },
+  return response.data;
+},
 
   // Logout user
   logout: async () => {
