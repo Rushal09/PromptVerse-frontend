@@ -19,16 +19,28 @@ export const authAPI = {
 
       console.log("LOGIN RESPONSE:", response.data);
 
-      // Save JWT token
-      if (response.data?.token) {
-        localStorage.setItem("token", response.data.token);
+      /*
+        Handle different backend response formats:
+        1) { token: "..." }
+        2) { data: { token: "..." } }
+        3) { accessToken: "..." }
+      */
 
-        console.log("Token saved:", response.data.token);
+      const token =
+        response.data?.token ||
+        response.data?.data?.token ||
+        response.data?.accessToken ||
+        response.data?.data?.accessToken;
+
+      if (token) {
+        localStorage.setItem("token", token);
+        console.log("Token saved successfully");
       } else {
-        console.error("No token received from backend");
+        console.error("Token not found in login response");
       }
 
       return response.data;
+
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -38,7 +50,6 @@ export const authAPI = {
   // Logout user
   logout: async () => {
     try {
-      // Remove token locally
       localStorage.removeItem("token");
 
       const response = await api.post("/user/logout");
@@ -53,8 +64,17 @@ export const authAPI = {
   // Get current user profile
   getProfile: async () => {
     try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        console.warn("No token found, skipping profile request");
+        return null;
+      }
+
       const response = await api.get("/user/profile");
+
       return response.data;
+
     } catch (error) {
       console.error("Get profile error:", error);
       throw error;
