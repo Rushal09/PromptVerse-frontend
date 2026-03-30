@@ -1,16 +1,12 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL:
-    process.env.NODE_ENV === "production"
-      ? "https://promptverse-backend-q9ao.onrender.com/api"
-      : "http://localhost:3001/api",
-
+  baseURL: "https://promptverse-backend-g9ao.onrender.com/api",
   withCredentials: true,
 });
 
 /*
-  REQUEST INTERCEPTOR
+  Request interceptor
   Automatically attach JWT token
 */
 
@@ -20,6 +16,9 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log("Token attached to request");
+    } else {
+      console.log("No token found");
     }
 
     return config;
@@ -28,7 +27,7 @@ api.interceptors.request.use(
 );
 
 /*
-  RESPONSE INTERCEPTOR
+  Response interceptor
   Handle unauthorized errors
 */
 
@@ -38,14 +37,13 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.log("Unauthorized - removing token");
 
-      // Remove token ONLY
       localStorage.removeItem("token");
 
-      // ❌ DO NOT redirect automatically
-      // window.location.href = "/login";
+      window.location.href = "/login";
     }
 
     return Promise.reject(error);
   }
 );
+
 export default api;
