@@ -10,20 +10,22 @@ const api = axios.create({
 
 const getStoredToken = () => {
   try {
-    // 1. Normal token storage
+    // 1. direct token storage
     let token = localStorage.getItem("token");
     if (token && token !== "null" && token !== "undefined") {
       return token;
     }
 
-    // 2. Zustand persisted auth storage
+    // 2. persisted auth storage
     const authStorage = localStorage.getItem("auth-storage");
     if (authStorage) {
       const parsed = JSON.parse(authStorage);
+
       token =
         parsed?.state?.token ||
         parsed?.state?.accessToken ||
-        parsed?.state?.authToken;
+        parsed?.state?.authToken ||
+        parsed?.token;
 
       if (token && token !== "null" && token !== "undefined") {
         return token;
@@ -58,8 +60,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       console.log("❌ Unauthorized request");
-
-      // keep disabled while debugging
+      // keep these disabled while debugging
       // localStorage.removeItem("token");
       // window.location.href = "/login";
     }

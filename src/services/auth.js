@@ -5,6 +5,22 @@ export const authAPI = {
   register: async (userData) => {
     try {
       const response = await api.post("/user/register", userData);
+
+      const token = response.data?.token;
+      if (token) {
+        localStorage.setItem("token", token);
+
+        const authStorage = localStorage.getItem("auth-storage");
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          parsed.state = {
+            ...parsed.state,
+            token,
+          };
+          localStorage.setItem("auth-storage", JSON.stringify(parsed));
+        }
+      }
+
       return response.data;
     } catch (error) {
       console.error("Register error:", error);
@@ -14,49 +30,67 @@ export const authAPI = {
 
   // Login user
   login: async (credentials) => {
-  try {
-    const response = await api.post("/user/login", credentials);
+    try {
+      const response = await api.post("/user/login", credentials);
 
-    console.log("LOGIN RESPONSE:", response.data);
+      console.log("LOGIN RESPONSE:", response.data);
 
-    const token =
-      response.data?.token ||
-      response.data?.data?.token ||
-      response.data?.accessToken ||
-      response.data?.data?.accessToken;
+      const token =
+        response.data?.token ||
+        response.data?.data?.token ||
+        response.data?.accessToken ||
+        response.data?.data?.accessToken;
 
-    if (token) {
-      localStorage.setItem("token", token);
+      const user =
+        response.data?.user ||
+        response.data?.data?.user ||
+        null;
 
-      const authStorage = localStorage.getItem("auth-storage");
-      if (authStorage) {
-        const parsed = JSON.parse(authStorage);
-        parsed.state = {
-          ...parsed.state,
-          token,
-        };
-        localStorage.setItem("auth-storage", JSON.stringify(parsed));
+      if (token) {
+        localStorage.setItem("token", token);
+
+        const authStorage = localStorage.getItem("auth-storage");
+        if (authStorage) {
+          const parsed = JSON.parse(authStorage);
+          parsed.state = {
+            ...parsed.state,
+            token,
+            user: user || parsed.state?.user || null,
+            isAuthenticated: true,
+          };
+          localStorage.setItem("auth-storage", JSON.stringify(parsed));
+        }
+
+        console.log("✅ Token saved:", token);
+      } else {
+        console.error("❌ Token not found in login response");
       }
 
-      console.log("✅ Token saved:", token);
-    } else {
-      console.error("❌ Token not found in login response");
+      return response.data;
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     }
-
-    return response.data;
-  } catch (error) {
-    console.error("Login error:", error);
-    throw error;
-  }
-},
+  },
 
   // Logout user
   logout: async () => {
     try {
       localStorage.removeItem("token");
 
-      const response = await api.post("/user/logout");
+      const authStorage = localStorage.getItem("auth-storage");
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        parsed.state = {
+          ...parsed.state,
+          token: null,
+          user: null,
+          isAuthenticated: false,
+        };
+        localStorage.setItem("auth-storage", JSON.stringify(parsed));
+      }
 
+      const response = await api.post("/user/logout");
       return response.data;
     } catch (error) {
       console.error("Logout error:", error);
@@ -75,9 +109,7 @@ export const authAPI = {
       }
 
       const response = await api.get("/user/profile");
-
       return response.data;
-
     } catch (error) {
       console.error("Get profile error:", error);
       throw error;
@@ -129,5 +161,4 @@ export const authAPI = {
   },
 };
 
-// Export alias
 export const authApi = authAPI;
