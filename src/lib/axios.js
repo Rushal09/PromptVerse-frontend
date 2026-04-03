@@ -40,7 +40,6 @@ api.interceptors.request.use(
       console.log("❌ No valid token found");
     }
 
-    // Let browser set multipart boundary automatically
     if (config.data instanceof FormData) {
       delete config.headers["Content-Type"];
     } else {

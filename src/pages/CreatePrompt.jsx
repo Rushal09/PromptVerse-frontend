@@ -1,13 +1,12 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useDropzone } from "react-dropzone";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  Upload,
   X,
   Image as ImageIcon,
   File as FileIcon,
@@ -20,10 +19,9 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Textarea } from "../components/ui/textarea";
 import { Card } from "../components/ui/card";
-import { promptsApi } from "../services/prompts";
 import api from "../lib/axios";
 
-// Categories - matching the ones we use in Explore page
+// Categories
 const CATEGORIES = [
   "ChatGPT",
   "Midjourney",
@@ -36,7 +34,7 @@ const CATEGORIES = [
   "Business",
 ];
 
-// Validation schema based on backend API requirements
+// Validation schema
 const createPromptSchema = z.object({
   title: z
     .string()
@@ -48,10 +46,8 @@ const createPromptSchema = z.object({
     .max(2000, "Description must be less than 2000 characters"),
   category: z.string().min(1, "Please select a category"),
   tags: z.string().optional(),
-  image: z.any().refine((file) => file !== null && file !== undefined, {
-    message: "Image is required",
-  }),
-  file: z.any().optional(),
+  image: z.any().optional().nullable(),
+  file: z.any().optional().nullable(),
 });
 
 export default function CreatePrompt() {
@@ -64,7 +60,6 @@ export default function CreatePrompt() {
   const {
     register,
     handleSubmit,
-    control,
     setValue,
     watch,
     formState: { errors, isDirty },
@@ -75,6 +70,8 @@ export default function CreatePrompt() {
       description: "",
       category: "",
       tags: "",
+      image: null,
+      file: null,
     },
   });
 
@@ -137,19 +134,18 @@ export default function CreatePrompt() {
     (acceptedFiles) => {
       const file = acceptedFiles[0];
       if (file) {
-        // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           toast.error("Image size must be less than 5MB");
           return;
         }
 
-        // Validate file type
         if (!file.type.startsWith("image/")) {
-          toast.error("Please upload an image file");
+          toast.error("Please upload a valid image file");
           return;
         }
 
         setValue("image", file, { shouldDirty: true });
+
         const reader = new FileReader();
         reader.onload = () => setImagePreview(reader.result);
         reader.readAsDataURL(file);
@@ -164,7 +160,9 @@ export default function CreatePrompt() {
     isDragActive: isImageDragActive,
   } = useDropzone({
     onDrop: onImageDrop,
-    accept: { "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"] },
+    accept: {
+      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"],
+    },
     maxFiles: 1,
     multiple: false,
   });
@@ -174,7 +172,6 @@ export default function CreatePrompt() {
     (acceptedFiles) => {
       const file = acceptedFiles[0];
       if (file) {
-        // Validate file size (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
           toast.error("File size must be less than 10MB");
           return;
@@ -197,60 +194,50 @@ export default function CreatePrompt() {
     multiple: false,
   });
 
-  // Remove image
   const removeImage = () => {
     setImagePreview(null);
     setValue("image", null, { shouldDirty: true });
   };
 
-  // Remove file
   const removeFile = () => {
     setFileName(null);
     setValue("file", null, { shouldDirty: true });
   };
 
-  // Form submission
   const onSubmit = async (data) => {
     setIsSubmitting(true);
 
     try {
-      // Direct FormData creation and submission
       const formData = new FormData();
       formData.append("title", data.title);
       formData.append("description", data.description);
       formData.append("category", data.category);
 
-      // Handle tags - convert comma-separated string to array
       if (data.tags) {
         const tagsArray = data.tags
           .split(",")
           .map((tag) => tag.trim())
           .filter((tag) => tag);
-        tagsArray.forEach((tag) => formData.append("tags", tag));
+
+        formData.append("tags", JSON.stringify(tagsArray));
       }
 
-      // Append files if present
+      // Backend expects these exact field names
       if (data.image) {
-        formData.append("image", data.image);
+        formData.append("thumbnailImage", data.image);
       }
 
       if (data.file) {
-        formData.append("file", data.file);
+        formData.append("additionalFile", data.file);
       }
 
-      // Call the API directly with axios
-      const response = await api.post("/promt/create", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+      const response = await api.post("/promt/create", formData);
 
       toast.success("Prompt created successfully!");
       localStorage.removeItem("createPromptDraft");
       queryClient.invalidateQueries(["prompts"]);
       queryClient.invalidateQueries(["my-prompts"]);
 
-      // Navigate to the created prompt or dashboard
       if (response.data.promt && response.data.promt.id) {
         navigate(`/prompt/${response.data.promt.id}`);
       } else if (response.data.promt && response.data.promt._id) {
@@ -273,7 +260,6 @@ export default function CreatePrompt() {
   return (
     <div className="min-h-screen px-6 py-6">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
             Create New Prompt
@@ -283,9 +269,7 @@ export default function CreatePrompt() {
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Title */}
           <Card className="p-6">
             <div className="space-y-2">
               <Label htmlFor="title" className="text-lg font-semibold">
@@ -304,14 +288,11 @@ export default function CreatePrompt() {
                     {errors.title.message}
                   </p>
                 )}
-                <p className="text-sm text-gray-500 ml-auto">
-                  {titleLength}/100
-                </p>
+                <p className="text-sm text-gray-500 ml-auto">{titleLength}/100</p>
               </div>
             </div>
           </Card>
 
-          {/* Description */}
           <Card className="p-6">
             <div className="space-y-2">
               <Label htmlFor="description" className="text-lg font-semibold">
@@ -338,7 +319,6 @@ export default function CreatePrompt() {
             </div>
           </Card>
 
-          {/* Category */}
           <Card className="p-6">
             <div className="space-y-2">
               <Label htmlFor="category" className="text-lg font-semibold">
@@ -369,7 +349,6 @@ export default function CreatePrompt() {
             </div>
           </Card>
 
-          {/* Tags */}
           <Card className="p-6">
             <div className="space-y-2">
               <Label htmlFor="tags" className="text-lg font-semibold">
@@ -381,8 +360,7 @@ export default function CreatePrompt() {
                 {...register("tags")}
               />
               <p className="text-sm text-gray-500">
-                Add tags to help others discover your prompt. Separate with
-                commas.
+                Add tags to help others discover your prompt. Separate with commas.
               </p>
               {tagsLength > 0 && (
                 <p className="text-sm text-gray-500">{tagsLength}/200</p>
@@ -390,7 +368,6 @@ export default function CreatePrompt() {
             </div>
           </Card>
 
-          {/* Image Upload */}
           <Card className="p-6">
             <div className="space-y-4">
               <div>
@@ -419,7 +396,7 @@ export default function CreatePrompt() {
                       : "Drag and drop an image, or click to select"}
                   </p>
                   <p className="text-sm text-gray-500">
-                    PNG, JPG, GIF, WebP up to 5MB
+                    PNG, JPG, GIF, WebP, SVG up to 5MB
                   </p>
                 </div>
               ) : (
@@ -441,7 +418,6 @@ export default function CreatePrompt() {
             </div>
           </Card>
 
-          {/* File Upload */}
           <Card className="p-6">
             <div className="space-y-4">
               <div>
@@ -470,7 +446,7 @@ export default function CreatePrompt() {
                       : "Drag and drop a file, or click to select"}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Any file type up to 10MB
+                    Documents, PDFs, images up to 10MB
                   </p>
                 </div>
               ) : (
@@ -493,7 +469,6 @@ export default function CreatePrompt() {
             </div>
           </Card>
 
-          {/* Action Buttons */}
           <div className="sticky bottom-6 bg-white dark:bg-slate-950 border rounded-lg p-4 shadow-lg">
             <div className="flex gap-4 justify-end">
               <Button
